@@ -1,6 +1,5 @@
-# IGS-SEGMENT
-Iterative gradient sampling
-# Fixed-Point GAN <img src="https://img.shields.io/badge/Patent-Pending-yellow"/>
+# Iterative Gradient Sampling (IGS)
+
 This repository provides the official PyTorch implementation of Iterative Gradient Sampling methods that introduces approach to segmentation and classification which dramatically reduces k-space fractions and introduces a novel method for disease detection.
 
 ## Abstract
