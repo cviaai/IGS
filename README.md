@@ -1,6 +1,18 @@
+[![License](https://img.shields.io/github/license/analysiscenter/pydens.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+[![Python](https://img.shields.io/badge/python-3.6-blue.svg)](https://python.org)
+
 # Iterative Gradient Sampling (IGS)
 
-This repository provides the official PyTorch implementation of Iterative Gradient Sampling methods that introduces approach to segmentation and classification which dramatically reduces k-space fractions and introduces a novel method for disease detection.
+This repository provides the official PyTorch implementation of Iterative Gradient Sampling (IGS) methods that introduces approach to segmentation and classification which dramatically reduces k-space fractions and introduces a novel method for pathology diagnostics.
+
+<p align="center">
+<img src="misc/igs_undersampling.gif" alt>
+
+</p>
+<p align="center">
+<em>Demonstration of synchrony suppression via IGS algorithm.</em>
+</p>
+
 
 ## Abstract
 Establishing diagnosis based on clinical MRI images classification and segmentation is a challenging problem due to time required for MRI acquisition and subsequent interpretation by an expert.
@@ -16,25 +28,23 @@ A series of ablation experiments support the importance of the gradient frequenc
 ### 0. Cloning the repository
 
 ```bash
-$ git clone https://github.com/cviaai/IGS-SEGMENT.git
+$ git clone https://github.com/cviaai/IGS.git
 $ cd IGS-SEGMENT/
 ```
 
 ### 1. Creating python environment
 
 ```bash
-$ conda env create -f conda_env/conda_env_pytorch0.2.yml
-$ source activate pytorch0.2
-$ cat conda_env/pip_pytorch0.2.txt | xargs -n 1 pip install
+$ conda env create -f igs.yml
+$ conda activate igs
 ```
 
-### 2. Downloading the dataset
+### 2. Datasets
 
-To download the processed BRATS 2013 synthetic dataset:
-
-```bash
-$ bash download.sh brats
-```
+IGS is trained to work with the major public medical datasets to resolve the following medical tasks:
+1. Segmentation (BraTS2020 for brain tumor segmentation, ACDC for cardiac segmentation)
+2. Classification (BraTS2020 total amount of slices being split into tumor/not tumor classes)
+3. Image reconstruction (raw k-space from FastMRI dataset, undersampled ACDC, BraTS)
 
 ### 3. Training
 
