@@ -10,7 +10,7 @@ This repository provides the official PyTorch implementation of Iterative Gradie
 
 </p>
 <p align="center">
-<em>Demonstration of synchrony suppression via IGS algorithm.</em>
+<em>Demonstration of k-space patterning via IGS algorithm featuring segmentation results with the ACDC dataset.</em>
 </p>
 
 
