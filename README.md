@@ -39,39 +39,29 @@ $ conda activate igs
 ### 2. Datasets
 
 IGS is trained to work with the major public medical datasets to resolve the following medical tasks:
-1. Segmentation (BraTS2020 for brain tumor segmentation, ACDC for cardiac segmentation)
-2. Classification (BraTS2020 total amount of slices being split into tumor/not tumor classes)
-3. Image reconstruction (raw k-space from FastMRI dataset, undersampled ACDC, BraTS)
+1. **Segmentation** (BraTS2020 for brain tumor segmentation, ACDC for cardiac segmentation)
+3. **Classification** (BraTS2020 with the total amount of slices being split into tumor/non-tumor classes)
+4. **Image** reconstruction (raw k-space from FastMRI dataset, undersampled ACDC, BraTS)
 
-### 3. Training
+### 3. Code structure
 
-Training on BRATS dataset
+.
+├── k_space_reconstruction    # Reconstruction tasks codes
+│   ├── datasets              # Data preparation
+│   ├── nets                  # Models
+│   └── utils                 # Utility files
+├── notebooks                 # Train, validation, test scripts
+│   ├── acdc-unet-attention   # Attention U-Net for ACDC
+│   ├── acdc                  # ACDC segmentation with U-Net
+│   ├── brats-unet3d          # BraTS segmentation with U-Net 3D
+│   ├── brats                 # BraTS segmentation with U-Net
+│   ├── brats-zf-recon        # Zero-filled reconstruction
+│   ├── classification-brats  # Classification with BraTS (class-split)
+│   ├── brats-zf-recon        # Zero-filled reconstruction
+│   ├── fastmri-knee-zf-recon # Fast-MRI knee reconstruction
+└── ...
 
-```bash
-$ python main.py --mode train --dataset BRATS --crop_size 256 --image_size 256 --c_dim 1 \
-                 --image_dir data/brats/syn \
-                 --sample_dir brats_syn_256_lambda0.1/samples \
-                 --log_dir brats_syn_256_lambda0.1/logs \
-                 --model_save_dir brats_syn_256_lambda0.1/models \
-                 --result_dir brats_syn_256_lambda0.1/results \
-                 --batch_size 8 --num_workers 4 --lambda_id 0.1 --num_iters 300000
-```
-
-### 4. Testing
-
-Testing on BRATS dataset
-
-```bash
-$ python main.py --mode test_brats --dataset BRATS --crop_size 256 --image_size 256 --c_dim 1 \
-                 --image_dir data/brats/syn \
-                 --sample_dir brats_syn_256_lambda0.1/samples \
-                 --log_dir brats_syn_256_lambda0.1/logs \
-                 --model_save_dir brats_syn_256_lambda0.1/models \
-                 --result_dir brats_syn_256_lambda0.1/results \
-                 --batch_size 16 --num_workers 4 --lambda_id 0.1 --test_iters 300000
-```
-
-### 5. Testing using pretrained models
+### 4. Metrics
 
 Loss functions used:
 
@@ -82,7 +72,7 @@ Loss functions used:
 <img src="https://render.githubusercontent.com/render/math?math=L_{L1}=|| X_{i} - \hat{X_{i}}||_{1}">
 
 
-## Citation
+## 5. Citation
 
 Please cite this work as following:
 
