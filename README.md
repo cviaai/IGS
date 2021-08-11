@@ -1,5 +1,5 @@
 [![License](https://img.shields.io/github/license/analysiscenter/pydens.svg)](https://www.apache.org/licenses/LICENSE-2.0)
-[![Python](https://img.shields.io/badge/python-3.6-blue.svg)](https://python.org)
+[![Python](https://img.shields.io/badge/python-3.8-blue.svg)](https://python.org)
 
 # Iterative Gradient Sampling (IGS)
 
