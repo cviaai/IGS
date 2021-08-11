@@ -73,18 +73,14 @@ $ python main.py --mode test_brats --dataset BRATS --crop_size 256 --image_size 
 
 ### 5. Testing using pretrained models
 
-Testing on BRATS dataset using pretrained models
+Loss functions used:
 
-```bash
-$ bash download.sh pretrained_brats_256
-$ python main.py --mode test_brats --dataset BRATS --crop_size 256 --image_size 256 --c_dim 1 \
-                 --image_dir data/brats/syn --sample_dir brats_syn_256_lambda0.1/samples \
-                 --log_dir brats_syn_256_lambda0.1/logs \
-                 --model_save_dir pretrained_models/brats_syn_256_lambda0.1 \
-                 --result_dir brats_syn_256_lambda0.1/results \
-                 --batch_size 16 --num_workers 4 --lambda_id 0.1 --test_iters 300000
-$ python brats_auc.py
-```
+<img src="https://render.githubusercontent.com/render/math?math=L_{DICE}(Y, \hat{Y})=1-\frac{2 Y \hat{Y}%2B1}{Y%2B\hat{Y}%2B1}">
+
+<img src="https://render.githubusercontent.com/render/math?math=L_{BCE} = -\sum_{i=1}^{C=2}Y_{i} log (\hat{Y}_{i} )">
+
+<img src="https://render.githubusercontent.com/render/math?math=L_{L1}=|| X_{i} - \hat{X_{i}}||_{1}">
+
 
 ## Citation
 
