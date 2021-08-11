@@ -15,13 +15,10 @@ This repository provides the official PyTorch implementation of Iterative Gradie
 
 
 ## Abstract
-Establishing diagnosis based on clinical MRI images classification and segmentation is a challenging problem due to time required for MRI acquisition and subsequent interpretation by an expert.
-
-MRI diagnostic can be accelerated by using k-space undersampling and applying deep-learning models for automatic diagnosing. In this work we propose k-space undersampling pattern optimization for specific segmentation and classification models. 
-
-In addition, compared to other state-of-the-art segmentation and classification networks our approach demonstrates better performance by increasing the accuracy of the predictions while reducing the standard deviation and improving the structural similarity. 
-
-A series of ablation experiments support the importance of the gradient frequency sampling in the proposed architecture.
+To accelerate MRI, the field of compressed sensing is traditionally concerned with optimizing the image quality after a partial undersampling of the measurable *k*-space. In our work, we propose to change the focus from the quality of the reconstructed image to the quality of the downstream image analysis outcome. 
+Specifically, we propose to optimize the patterns according to how well a sought-after pathology could be detected or localized in the reconstructed images. 
+We find the optimal undersampling patterns in *k*-space that maximize target value functions of interest in commonplace medical vision problems (reconstruction, segmentation, and classification) and propose a new iterative gradient sampling routine universally suitable for these tasks. 
+We validate the proposed MRI acceleration paradigm on three classical medical datasets, demonstrating a noticeable improvement of the target metrics at the high acceleration factors (for the segmentation problem at x16 acceleration, we report up to 12% improvement in Dice score over the other undersampling patterns
 
 ## Usage
 
