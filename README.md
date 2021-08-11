@@ -41,10 +41,10 @@ $ conda activate igs
 IGS is trained to work with the major public medical datasets to resolve the following medical tasks:
 1. **Segmentation** (BraTS2020 for brain tumor segmentation, ACDC for cardiac segmentation)
 3. **Classification** (BraTS2020 with the total amount of slices being split into tumor/non-tumor classes)
-4. **Image** reconstruction (raw k-space from FastMRI dataset, undersampled ACDC, BraTS)
+4. **Image reconstruction** (raw k-space from FastMRI dataset, undersampled ACDC, BraTS)
 
 ### 3. Code structure
-
+```
 .
 ├── k_space_reconstruction    # Reconstruction tasks codes
 │   ├── datasets              # Data preparation
@@ -60,7 +60,7 @@ IGS is trained to work with the major public medical datasets to resolve the fol
 │   ├── brats-zf-recon        # Zero-filled reconstruction
 │   ├── fastmri-knee-zf-recon # Fast-MRI knee reconstruction
 └── ...
-
+```
 ### 4. Metrics
 
 Loss functions used:
