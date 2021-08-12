@@ -77,12 +77,12 @@ Loss functions used:
 Please cite this work as following:
 
 ```
-@misc{razumov-IGS,
-  author = {Artem Razumov and Oleg Rogov and Dmitry V. Dylov},
-  title = {Smart mask learning for segmentation},
-  year = {2021},
-  publisher = {GitHub},
-  journal = {GitHub repository},
-  howpublished = {\url{https://github.com/cviaai/IGS-SEGMENT}}
+@misc{razumov2021optimal,
+      title={Optimal MRI Undersampling Patterns for Ultimate Benefit of Medical Vision Tasks}, 
+      author={Artem Razumov and Oleg Y. Rogov and Dmitry V. Dylov},
+      year={2021},
+      eprint={2108.04914},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
 }
 ```
