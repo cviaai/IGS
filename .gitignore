@@ -127,3 +127,15 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+*.pt
+*.cache
+*.tar.gz
+octave-workspace
+*.h5
+*.txt
+*.sh
+*.pth
+*.eps
+*.pdf
+__pycache__
+*.mat

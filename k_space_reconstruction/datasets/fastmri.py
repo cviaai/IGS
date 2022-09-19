@@ -12,7 +12,8 @@ from os.path import isdir, join
 from torch.utils.data.dataset import T_co
 from torch.utils.data import Dataset, DataLoader, random_split
 from k_space_reconstruction.utils.kspace import RandomMaskFunc, MaskFunc, spatial2kspace, kspace2spatial, apply_mask
-from k_space_reconstruction.utils.io import get_dir_md5hash, get_file_md5hash
+from k_space_reconstruction.utils.hash import get_dir_md5hash, get_file_md5hash
+from k_space_reconstruction.utils.motion_artefact_mask import add_motion_artefacts
 
 
 class FastMRITransformC(object):
@@ -44,6 +45,24 @@ class FastMRITransformC(object):
             ks[i] = ks.mean() * self.noise_level
             ks = ks.reshape(shape)
             return ks
+        #----------Gaussain+Salt-Noises-------------------
+        # Noise lvls are hardcoded
+      
+        elif self.noise_type == 'normal_and_salt':
+            normal_noise_lvl = 100
+            salt_noise_lvl = 5e4
+            ks_mean = ks.mean()
+            # Add Gaussian
+            ks = ks + np.random.normal(size=(ks.shape[0], ks.shape[1])) * ks_mean * normal_noise_lvl
+            # Add Salt
+            shape = ks.shape
+            ks = ks.flatten()
+            i = np.random.randint(low=0, high=shape[0] * shape[1], size=10)
+            ks[i] = ks_mean * salt_noise_lvl
+            ks = ks.reshape(shape)
+            return ks
+        
+        #-------------------------------------------------
 
     def __call__(self, f_name: str, slice_id: str, k_space: np.ndarray, max_val: float):
         recon = kspace2spatial(k_space)
@@ -103,6 +122,19 @@ class FastMRITransform(object):
             ks[i] = ks.mean() * self.noise_level
             ks = ks.reshape(shape)
             return ks
+        elif self.noise_type == 'normal_and_salt':
+            normal_noise_lvl = 100
+            salt_noise_lvl = 5e4
+            ks_mean = ks.mean()
+            # Add Gaussian
+            ks = ks + np.random.normal(size=(ks.shape[0], ks.shape[1])) * ks_mean * normal_noise_lvl
+            # Add Salt
+            shape = ks.shape
+            ks = ks.flatten()
+            i = np.random.randint(low=0, high=shape[0] * shape[1], size=10)
+            ks[i] = ks_mean * salt_noise_lvl
+            ks = ks.reshape(shape)
+            return ks
 
     def __call__(self, f_name: str, slice_id: str, k_space: np.ndarray, max_val: float):
         recon = kspace2spatial(k_space)
@@ -149,7 +181,7 @@ class FastMRIDataset(Dataset):
         fp, slice_id = self._slices[index]
         hf = h5py.File(fp)
         ks = hf['kspace'][:]
-        # ks = ks * 1e6
+        ks = ks * 1e6
         maxval = np.stack([kspace2spatial(k) for k in ks]).max()
         # maxval = hf.attrs['max']
         # target = hf['reconstruction_esc'][slice_id]
@@ -179,6 +211,23 @@ class FastMRIh5Dataset(Dataset):
         ks = self.hf[key][:]
         ks = ks * 1e6
         maxval = np.stack([kspace2spatial(k) for k in ks]).max()
+        if self.transform:
+            return self.transform(key, slice_id, ks[slice_id], maxval)
+        else:
+            return torch.as_tensor(np.stack((ks.real, ks.imag)), dtype=torch.float)
+
+
+class DemotionFastMRIh5Dataset(FastMRIh5Dataset):
+
+    def __init__(self, hf_path, transform, num_of_slices_per_artifact):
+        super(DemotionFastMRIh5Dataset, self).__init__(hf_path=hf_path, transform=transform)
+        self.num_of_slices_per_artifact = num_of_slices_per_artifact
+
+    def __getitem__(self, item):
+        key, slice_id = self._slices[item]
+        kspace = add_motion_artefacts(self, item=item, num_of_slices_per_artifact=5)
+        k = kspace[0] + 1j * kspace[1]
+        maxval = k.max()
         if self.transform:
             return self.transform(key, slice_id, ks[slice_id], maxval)
         else:

@@ -20,6 +20,38 @@ def create_window(window_size, channel=1):
     window = _2D_window.expand(channel, 1, window_size, window_size).contiguous()
     return window
 
+def kl_loss_freq_domain(pred, gt, L1 = False):
+
+    if L1:
+        l = F.l1_loss(pred, gt)
+    else:
+        l = F.mse_loss(pred, gt)
+        
+    fft2_pred = torch.fft.fft(torch.fft.fft(pred, dim=0), dim=1)
+    fft2_gt = torch.fft.fft(torch.fft.fft(gt, dim=0), dim=1)
+    
+    alpha = 0.7
+    fft2_pred = torch.stack((fft2_pred.real, fft2_pred.imag))
+    fft2_gt = torch.stack((fft2_gt.real, fft2_gt.imag))
+    
+
+    kl = F.kl_div(F.log_softmax(fft2_pred), F.softmax(fft2_gt))
+
+    return alpha * kl + (1 - alpha) * l
+
+
+def kl_loss_img_domain(pred, gt, L1 = False):
+
+    if L1:
+        l = F.l1_loss(pred, gt)
+    else:
+        l = F.mse_loss(pred, gt)
+            
+    alpha = 0.7    
+    kl = F.kl_div(F.log_softmax(pred), F.softmax(gt))
+
+    return alpha * kl + (1 - alpha) * l
+
 
 def pt_ssim(img1, img2, window_size=7, window=None, size_average=True, full=False, val_range=None):
     # Value range can be different from 255. Other common ranges are 1 (sigmoid) and 2 (tanh).

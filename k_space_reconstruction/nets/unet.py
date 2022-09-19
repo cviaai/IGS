@@ -203,5 +203,3 @@ class UnetModule(BaseReconstructionModule):
             num_pool_layers=kwargs['unet_num_layers'],
             chans=kwargs['unet_chans'],
         )
-
-

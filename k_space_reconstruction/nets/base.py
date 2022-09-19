@@ -12,16 +12,16 @@ import torch
 import torchvision
 import pytorch_lightning as pl
 import pylab as plt
-from pytorch_lightning.core.memory import ModelSummary
 from torch import Tensor
 from torch._C import ScriptModule
 from torch.optim import Optimizer
+from torchmetrics import Metric
 
 from k_space_reconstruction.utils.loss import RAdam
 from k_space_reconstruction.utils.metrics import nmse, psnr, ssim, vif, pt_msssim, pt_ssim
 
 
-class DistributedMetricSum(pl.metrics.Metric):
+class DistributedMetricSum(Metric):
     def __init__(self, dist_sync_on_step=True):
         super().__init__(dist_sync_on_step=dist_sync_on_step)
 
@@ -62,14 +62,14 @@ class BaseReconstructionModule(pl.LightningModule):
         raise NotImplemented
 
     def predict(self, batch):
-        ks, mask, y, x, mean, std, f_name, slice_id, max_val = batch
-        return self.net(x)
+        return self.net(batch['img'])
 
     def training_step(self, batch, batch_idx):
-        ks, mask, y, x, mean, std, f_name, slice_id, max_val = batch
-        yp = self.predict(batch)
+        yp = self.predict(batch['img'])
         loss = self.criterion(yp, y, mean, std)
-        self.log('train_loss_step', loss.detach())
+        if torch.isnan(loss):
+            print('warn')
+        self.log('train_loss_step', loss.detach(), sync_dist=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -114,7 +114,10 @@ class BaseReconstructionModule(pl.LightningModule):
             y = val_logs['target'][i].cpu().numpy()
 
             nmse_vals[fname][slice_id] = torch.tensor(nmse(y, yp)).view(1)
-            ssim_vals[fname][slice_id] = torch.tensor(ssim(y, yp, maxval=maxval)).view(1)
+            try:
+                ssim_vals[fname][slice_id] = torch.tensor(ssim(y, yp, maxval=maxval)).view(1)
+            except:
+                ssim_vals[fname][slice_id] = torch.zeros_like(nmse_vals[fname][slice_id])
             psnr_vals[fname][slice_id] = torch.tensor(psnr(y, yp)).view(1)
         return {
             'val_loss': val_logs['val_loss'],
@@ -166,9 +169,10 @@ class BaseReconstructionModule(pl.LightningModule):
             torch.tensor(len(losses), dtype=torch.float)
         )
 
-        self.log('val_loss', val_loss / tot_slice_examples, prog_bar=True)
+        self.log('val_loss', val_loss / tot_slice_examples, prog_bar=True, sync_dist=True)
+        # print(val_loss / tot_slice_examples)
         for metric, value in metrics.items():
-            self.log(metric, value / tot_examples)
+            self.log(metric, value / tot_examples, sync_dist=True)
 
     def test_step(self, batch, batch_idx):
         ks, mask, y, x, mean, std, f_name, slice_id, max_val = batch

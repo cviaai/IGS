@@ -13,7 +13,7 @@ from os.path import isdir, join
 from torch.utils.data.dataset import T_co
 from torch.utils.data import Dataset, DataLoader, random_split
 from k_space_reconstruction.utils.kspace import RandomMaskFunc, MaskFunc, spatial2kspace, kspace2spatial, apply_mask
-from k_space_reconstruction.utils.io import get_dir_md5hash, get_file_md5hash
+from k_space_reconstruction.utils.hash import get_dir_md5hash, get_file_md5hash
 
 
 class ACDCTransform(object):

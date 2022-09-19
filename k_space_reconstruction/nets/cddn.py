@@ -4,6 +4,8 @@ import torch.nn.functional as F
 from k_space_reconstruction.nets.base import BaseReconstructionModule
 from k_space_reconstruction.utils.kspace import pt_kspace2spatial as FtH
 from k_space_reconstruction.utils.kspace import pt_spatial2kspace as Ft
+from k_space_reconstruction.nets.unet import Unet
+from k_space_reconstruction.nets.dncnn import DnCNN
 
 
 PADDING_MODE = 'zeros'
@@ -34,16 +36,24 @@ class CDDNwTDC(nn.Module):
     def __init__(self, in_channels, n_filters, n_cascades):
         super().__init__()
         self.n_cascades = n_cascades
-        self.cascades = nn.ModuleList(
-            [DAMModule(in_channels, n_filters), TDCModule()] * n_cascades
-        )
+        self.cascades = nn.ModuleList([CDDNBlock(in_channels, n_filters) for _ in range(n_cascades)])
 
     def forward(self, k, m, x, mean, std):
-        for module in self.cascades:
-            if type(module) == DAMModule:
-                x = module(x)
-            elif type(module) == TDCModule:
-                x = module(k, m, x, mean, std)
+        for cascade in self.cascades:
+            x = cascade(k, m, x, mean, std)
+        return x
+
+
+class CDDNBlock(nn.Module):
+
+    def __init__(self, in_channels, n_filters):
+        super().__init__()
+        self.dam = DAMModule(in_channels, n_filters)
+        self.tdc = TDCModule()
+
+    def forward(self, k, m, x, mean, std):
+        x = self.dam(x)
+        x = self.tdc(k, m, x, mean, std)
         return x
 
 
@@ -69,12 +79,12 @@ class TDCModule(nn.Module):
     def __init__(self):
         super(TDCModule, self).__init__()
         self.dc1 = DataConsistencyModule()
-        # self.dc2 = DataConsistencyModule()
+        self.dc2 = DataConsistencyModule()
 
     def forward(self, k, m, x, mean, std):
         x = self.dc1(k, m, x, mean, std)
-        # x = x.abs()
-        # x = self.dc2(k, m, x, mean, std)
+        x = x.abs()
+        x = self.dc2(k, m, x, mean, std)
         return x
 
 
@@ -85,7 +95,6 @@ class DataConsistencyModule(nn.Module):
 
     def forward(self, k, m, x, mean, std):
         ks = Ft(x*std + mean)
-        k = k[:, :1] + 1j * k[:, 1:]
         x = FtH((1 - m) * ks + m * k).abs()
         return (x - mean) / (std + 1e-11)
 
@@ -99,6 +108,117 @@ class DataConsistencyLLearnableModule(nn.Module):
     def forward(self, k, m, x, mean, std):
         ks = Ft(x*std + mean)
         k = k[:, :1] + 1j * k[:, 1:]
+        x = FtH((1 - m) * ks + m * (ks + self.ll * k) / (1 + self.ll)).abs()
+        return (x - mean) / (std + 1e-11)
+
+
+class ActiveFilter(nn.Module):
+
+    def __init__(self, img_shape):
+        super(ActiveFilter, self).__init__()
+        self.w_1 = nn.Parameter(data=torch.ones(img_shape))
+        self.w_2 = nn.Parameter(data=torch.ones(img_shape))
+        self.b_1 = nn.Parameter(data=torch.zeros(img_shape))
+        self.b_2 = nn.Parameter(data=torch.zeros(img_shape))
+
+    def forward(self, ks):
+        x = F.leaky_relu(F.leaky_relu(self.w_1) * ks.abs() + F.leaky_relu(self.b_1))
+        x = F.leaky_relu(self.w_2) * x + F.leaky_relu(self.b_2)
+        return ks * x.abs() / (ks.abs() + 1e-11)
+
+
+class SuperActiveFilter(nn.Module):
+
+    def __init__(self):
+        super(SuperActiveFilter, self).__init__()
+        self.net = Unet(1, 1, 8, 4)
+
+    def forward(self, ks):
+        ksm = ks.abs()
+        mean = ksm.mean()
+        std = ksm.std()
+        ksm = (ksm - mean) / (std + 1e-11)
+        x = self.net(ksm).sigmoid()
+        return ks * x
+
+
+class DCSuperAFModule(nn.Module):
+
+    def __init__(self):
+        super(DCSuperAFModule, self).__init__()
+        self.ll = nn.Parameter(data=torch.tensor(1.0), requires_grad=True)
+        self.al = SuperActiveFilter()
+
+    def forward(self, k, m, x, mean, std):
+        ks = Ft(x*std + mean)
+        k = k[:, :1] + 1j * k[:, 1:]
+        k = self.al(k)
+        x = FtH((1 - m) * ks + m * (ks + self.ll * k) / (1 + self.ll)).abs()
+        return (x - mean) / (std + 1e-11)
+
+
+class DCSuperAFModuleV2(nn.Module):
+
+    def __init__(self):
+        super(DCSuperAFModuleV2, self).__init__()
+        self.ll = nn.Parameter(data=torch.tensor(1.0), requires_grad=True)
+        self.al1 = SuperActiveFilter()
+        self.al2 = SuperActiveFilter()
+
+    def forward(self, k, m, x, mean, std):
+        ks = Ft(x*std + mean)
+        k = k[:, :1] + 1j * k[:, 1:]
+        k = self.al1(k)
+        ks = self.al2(ks)
+        x = FtH((1 - m) * ks + m * (ks + self.ll * k) / (1 + self.ll)).abs()
+        return (x - mean) / (std + 1e-11)
+
+
+class DCSuperAFModuleV3(nn.Module):
+
+    def __init__(self):
+        super(DCSuperAFModuleV3, self).__init__()
+        self.ll = nn.Parameter(data=torch.tensor(1.0), requires_grad=True)
+        self.al = SuperActiveFilter()
+
+    def forward(self, k, m, x, mean, std):
+        ks = Ft(x*std + mean)
+        k = k[:, :1] + 1j * k[:, 1:]
+        k = self.al(Ft(FtH(k)))
+        x = FtH((1 - m) * ks + m * (ks + self.ll * k) / (1 + self.ll)).abs()
+        return (x - mean) / (std + 1e-11)
+
+
+class DCSuperAFModuleV4(nn.Module):
+
+    def __init__(self):
+        super(DCSuperAFModuleV4, self).__init__()
+        self.ll = nn.Parameter(data=torch.tensor(1.0), requires_grad=True)
+        self.al = SuperActiveFilter()
+
+    def forward(self, k, m, x, mean, std):
+        ks = Ft(x*std + mean)
+        k = k[:, :1] + 1j * k[:, 1:]
+        k = self.al(Ft(FtH(k)))
+        x = FtH((1 - m) * ks + m * (ks + self.ll * k) / (1 + self.ll)).abs()
+        ks = Ft(x)
+        x = FtH((1 - m) * ks + m * (ks + self.ll * k) / (1 + self.ll)).abs()
+        return (x - mean) / (std + 1e-11)
+
+
+class DLAFModule(nn.Module):
+
+    def __init__(self):
+        super(DLAFModule, self).__init__()
+        self.ll = nn.Parameter(data=torch.tensor(1.0), requires_grad=True)
+        self.al1 = ActiveFilter([1, 320, 320])
+        self.al2 = ActiveFilter([1, 320, 320])
+
+    def forward(self, k, m, x, mean, std):
+        ks = Ft(x*std + mean)
+        k = k[:, :1] + 1j * k[:, 1:]
+        ks = self.al1(ks)
+        k = self.al2(k)
         x = FtH((1 - m) * ks + m * (ks + self.ll * k) / (1 + self.ll)).abs()
         return (x - mean) / (std + 1e-11)
 
@@ -119,9 +239,6 @@ class AbstractionLayer(nn.Module):
 
     def forward(self, x):
         return self.activation(self.norm(self.conv(x)))
-        # x = self.norm(x)
-        # x = self.activation(x)
-        # return self.conv(x)
 
 
 class DenseConvBlock(nn.Module):
@@ -149,8 +266,6 @@ class DenseConvBlock(nn.Module):
     def forward(self, x):
         x = self.activation1x1(self.norm1x1(self.conv1x1(x)))
         x = self.activation3x3(self.norm3x3(self.conv3x3(x)))
-        # x = self.conv1x1(self.activation1x1(self.norm1x1(x)))
-        # x = self.conv3x3(self.activation3x3(self.norm3x3(x)))
         return x
 
 
@@ -183,7 +298,6 @@ class TransitionBlock(nn.Module):
 
     def forward(self, x):
         return self.activation(self.norm(self.conv(x)))
-        # return self.conv(self.activation(self.norm(x)))
 
 
 class RestoreBlock(nn.Module):
@@ -202,7 +316,6 @@ class RestoreBlock(nn.Module):
 
     def forward(self, x):
         return self.activation(self.norm(self.conv(x)))
-        # return self.conv(self.activation(self.norm(x)))
 
 
 if __name__ == '__main__':
@@ -212,7 +325,7 @@ if __name__ == '__main__':
     mean = torch.rand(2, 1, 1, 1)
     std = torch.rand(2, 1, 1, 1)
 
-    net = CDDNwTDC(1, 16, 5)
+    net = CDDNwTDC(1, 8, 5)
     print(net(k, m, x, mean, std).shape)
 
     from torchsummary import summary
